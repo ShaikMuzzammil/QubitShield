@@ -304,29 +304,16 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   color: #fff;
 }
 
-/* ---- Lab card layout ---- */
+/* ---- Lab card layout — ROW-WISE (stacked vertically, large canvas) ---- */
 .lab-card { padding: 18px 20px 20px; }
 .lab-grid {
-  display: grid;
-  grid-template-columns: 280px minmax(0, 1fr) 280px;
-  gap: 16px;
-  align-items: stretch;
-  min-height: 520px;
-}
-@media (max-width: 1200px) {
-  .lab-grid { grid-template-columns: 1fr; }
-}
-
-/* ---- Lab controls card (left) ---- */
-.lab-controls-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  background: rgba(23, 35, 69, .5);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px 18px;
+  gap: 14px;
+  align-items: stretch;
 }
+
+/* ---- Shared lab styles ---- */
 .lab-section-title {
   margin: 0 0 4px;
   font-size: .86rem;
@@ -348,7 +335,6 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   color: #bfc9f3;
 }
 .lab-field select {
-  width: 100%;
   padding: 7px 10px;
   background: var(--panel-2);
   color: var(--text);
@@ -362,8 +348,8 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   gap: 8px;
 }
 .lab-btn {
-  flex: 1;
-  padding: 9px 12px;
+  flex: none;
+  padding: 9px 16px;
   font-size: .86rem;
   border-radius: 8px;
 }
@@ -382,12 +368,14 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   align-items: center;
   padding: 4px 0;
   border-bottom: 1px solid rgba(36, 50, 87, .4);
+  gap: 12px;
 }
 .lab-stat-label {
   font-size: .76rem;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: .04em;
+  white-space: nowrap;
 }
 .lab-stat-val {
   font-size: .82rem;
@@ -398,7 +386,7 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
 .lab-orbit-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   margin-top: 4px;
 }
 .lab-checkbox {
@@ -428,7 +416,7 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   margin: 0;
 }
 
-/* ---- Lab canvas (center) ---- */
+/* ---- Lab canvas ---- */
 .lab-canvas-wrap {
   position: relative;
   background:
@@ -438,13 +426,14 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
-  min-height: 520px;
+  min-height: 500px;
+  height: 560px;
 }
 .lab-canvas {
   display: block;
   width: 100%;
   height: 100%;
-  min-height: 520px;
+  min-height: 500px;
   cursor: grab;
   touch-action: none;
 }
@@ -459,23 +448,6 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   border-radius: 8px;
   font-family: var(--font-mono);
   border: 1px solid rgba(36, 50, 87, .6);
-}
-
-/* ---- Lab side card (right) ---- */
-.lab-side-card {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: rgba(23, 35, 69, .5);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 16px 18px;
-}
-.lab-stage-desc {
-  font-size: .82rem;
-  line-height: 1.5;
-  color: #bfc9f3;
-  margin: 0 0 8px;
 }
 
 /* ---- Syndrome display ---- */
@@ -493,6 +465,7 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   display: flex;
   justify-content: space-between;
   padding: 2px 0;
+  gap: 12px;
 }
 .lab-syn-row span:first-child { color: var(--muted); }
 .lab-syn-row span:last-child { font-weight: 700; }
@@ -511,7 +484,7 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
 }
 
 /* ---- Legend ---- */
-.lab-legend { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lab-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 16px; }
 .lab-legend li {
   display: flex;
   align-items: center;
@@ -547,18 +520,143 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
 /* ---- Stage pills ---- */
 .stage-pills {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 .stage-pill {
   font-size: .76rem;
-  padding: 5px 10px;
-  border-radius: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
   background: rgba(8, 12, 28, .4);
   border: 1px solid var(--line);
   color: var(--muted);
   cursor: pointer;
   transition: all .15s;
+  white-space: nowrap;
+}
+
+/* ---- Export buttons ---- */
+.lab-export-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.lab-export-btn {
+  font-size: .76rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: rgba(8, 12, 28, .55);
+  border: 1px solid var(--line);
+  color: #c9d3ff;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.lab-export-btn:hover {
+  border-color: var(--purple);
+  color: #fff;
+}
+
+/* Controls row: horizontal bar across the top */
+.lab-controls-card {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  background: rgba(23, 35, 69, .5);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 18px;
+}
+.lab-controls-card .lab-section-title {
+  margin: 0;
+  flex: none;
+}
+.lab-controls-card .lab-section-desc {
+  margin: 0;
+  flex: 1 1 300px;
+  min-width: 200px;
+}
+.lab-controls-card .lab-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.lab-controls-card .lab-field label {
+  margin: 0;
+  white-space: nowrap;
+}
+.lab-controls-card .lab-field select {
+  width: 160px;
+}
+.lab-controls-card .lab-btn-row {
+  flex: none;
+}
+.lab-controls-card .lab-info-box {
+  flex: 1 1 200px;
+  min-width: 150px;
+}
+.lab-controls-card .lab-stat-row {
+  flex: none;
+  border-bottom: none;
+  padding: 0;
+}
+.lab-controls-card .lab-orbit-row {
+  flex: none;
+  margin-top: 0;
+}
+.lab-controls-card .lab-hint {
+  flex: none;
+  margin: 0;
+}
+.lab-controls-card .lab-legend {
+  flex-direction: row;
+  flex: 1;
+}
+
+/* Canvas: large, full width */
+.lab-canvas-wrap {
+  min-height: 500px;
+  height: 560px;
+}
+.lab-canvas {
+  min-height: 500px;
+}
+
+/* Info row: horizontal bar at the bottom */
+.lab-side-card {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 18px;
+  background: rgba(23, 35, 69, .5);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 18px;
+}
+.lab-side-card > .lab-section-title {
+  margin: 0;
+  flex: none;
+}
+.lab-side-card .lab-stage-desc {
+  flex: 1 1 300px;
+  min-width: 200px;
+  margin: 0;
+}
+.lab-side-card .lab-syndrome {
+  flex: none;
+  min-width: 200px;
+}
+.lab-side-card .stage-pills {
+  flex: 1 1 100%;
+}
+.lab-side-card .lab-frame-info {
+  flex: 1 1 300px;
+  min-width: 200px;
 }
 .stage-pill:hover {
   border-color: var(--purple);

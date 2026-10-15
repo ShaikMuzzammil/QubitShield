@@ -680,6 +680,244 @@
   }
 
   // ============================================================
+  // EXPORT FUNCTIONS
+  // ============================================================
+
+  function downloadFile(filename, content, mimeType) {
+    const blob = new Blob([content], { type: mimeType || "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  function nowStamp() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(d.getSeconds())}`;
+  }
+
+  function teamNames() {
+    return "K. Devendra Reddy · Shaik Muzzammil · D. Guna Samhith";
+  }
+
+  function exportBlochReport() {
+    if (!walkData) { alert("Press Play first to generate walkthrough data."); return; }
+    const cfg = getConfig();
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const stages = walkData.stages;
+    const stageRows = stages.map((s, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td><strong>${s.title}</strong></td>
+        <td>${s.desc || ""}</td>
+        <td>(${s.vec.x.toFixed(3)}, ${s.vec.y.toFixed(3)}, ${s.vec.z.toFixed(3)})</td>
+        <td>${s.fidelity !== null && s.fidelity !== undefined ? (s.fidelity * 100).toFixed(1) + "%" : "—"}</td>
+        <td>${s.correction.x.length ? "X on q" + s.correction.x.join(",q") : ""}${s.correction.z.length ? (s.correction.x.length ? " + " : "") + "Z on q" + s.correction.z.join(",q") : ""}</td>
+        <td>${s.syndrome.map((sy) => `${sy.label}=${sy.bit}`).join(", ") || "—"}</td>
+      </tr>`).join("");
+
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>3D Bloch Sphere — Pipeline Walkthrough Report</title>
+      <style>
+        body { font-family: "Manrope", sans-serif; background: #0a0f1f; color: #e8ecff; margin: 40px; }
+        h1 { color: #a78bfa; border-bottom: 2px solid #5b8cff; padding-bottom: 10px; }
+        h2 { color: #c9d3ff; margin-top: 30px; }
+        .header { background: #111a33; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #243257; }
+        .header table { width: 100%; border-collapse: collapse; }
+        .header td { padding: 4px 12px; color: #bfc9f3; }
+        .header td:first-child { color: #8f9bc7; font-weight: 600; width: 200px; }
+        table.data { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        table.data th { background: #172345; color: #c9d3ff; padding: 8px 10px; text-align: left; font-size: 12px; border-bottom: 2px solid #5b8cff; }
+        table.data td { padding: 8px 10px; border-bottom: 1px solid #243257; font-size: 12px; vertical-align: top; }
+        .footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #243257; color: #8f9bc7; font-size: 11px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: linear-gradient(135deg, #8b6cff, #5b8cff); color: #fff; font-size: 10px; font-weight: 700; }
+        .success { color: #3ddc97; font-weight: 700; }
+        .fail { color: #ff6b81; font-weight: 700; }
+      </style></head><body>
+      <h1>3D Bloch Sphere — Pipeline Walkthrough Report <span class="badge">3D Lab</span></h1>
+      <div class="header">
+        <table>
+          <tr><td>QEC Code</td><td>${walkData.code_name}</td></tr>
+          <tr><td>Input bit</td><td>|${walkData.input_bit}⟩</td></tr>
+          <tr><td>Error type</td><td>${walkData.error_type} on q${walkData.error_qubit}</td></tr>
+          <tr><td>Logical basis</td><td>${walkData.basis}</td></tr>
+          <tr><td>Target state</td><td>(${walkData.target_vec.x.toFixed(2)}, ${walkData.target_vec.y.toFixed(2)}, ${walkData.target_vec.z.toFixed(2)})</td></tr>
+          <tr><td>Logical result</td><td class="${walkData.success ? "success" : "fail"}">${walkData.logical_success === true ? "✓ CORRECTED (logical state preserved)" : walkData.logical_success === false ? "✗ FAILED (logical state lost)" : "—"}</td></tr>
+          <tr><td>Generated at</td><td>${nowStamp()}</td></tr>
+        </table>
+      </div>
+      <h2>7-Stage Pipeline Walkthrough</h2>
+      <p>Each stage's Bloch vector is computed by the real Qiskit state-vector engine (decode + partial trace + Bloch projection).</p>
+      <table class="data">
+        <thead><tr>
+          <th>#</th><th>Stage</th><th>Description</th><th>Bloch Vector (x, y, z)</th><th>Fidelity</th><th>Correction</th><th>Syndrome</th>
+        </tr></thead>
+        <tbody>${stageRows}</tbody>
+      </table>
+      <h2>The Quantum Circuit</h2>
+      <p>The QEC circuit built by <code>qec_simulator.py</code> for ${walkData.code_name}:</p>
+      <pre style="background: #060917; padding: 16px; border-radius: 8px; overflow-x: auto; color: #dfe6ff; font-family: monospace; font-size: 11px; border: 1px solid #243257;">${(window.circuitText || "Circuit text available in the Simulator tab.").replace(/</g, "&lt;")}</pre>
+      <div class="footer">
+        <strong>Interactive Quantum Error Correction Simulator</strong> — 3D Simulator Lab · Bloch Sphere Walkthrough<br>
+        Generated at ${nowStamp()} · Team: ${teamNames()}<br>
+        Every Bloch vector is a real Qiskit Statevector computation — no mock data.
+      </div>
+      </body></html>`);
+    w.document.close();
+  }
+
+  function exportBlochJSON() {
+    if (!walkData) { alert("Press Play first."); return; }
+    const data = {
+      experiment: "3D Bloch Sphere — Pipeline Walkthrough",
+      generatedAt: nowStamp(),
+      team: teamNames(),
+      inputs: {
+        code: walkData.code_name,
+        input_bit: walkData.input_bit,
+        error_type: walkData.error_type,
+        error_qubit: walkData.error_qubit,
+        basis: walkData.basis,
+        target_vec: walkData.target_vec,
+      },
+      stages: walkData.stages,
+      logical_success: walkData.logical_success,
+    };
+    downloadFile(`bloch_walkthrough_${walkData.code}_${nowStamp()}.json`, JSON.stringify(data, null, 2), "application/json");
+  }
+
+  function exportBlochCSV() {
+    if (!walkData) { alert("Press Play first."); return; }
+    const header = "stage,title,description,bloch_x,bloch_y,bloch_z,fidelity,correction_x,correction_z,syndrome\n";
+    const rows = walkData.stages.map((s) => {
+      const fid = s.fidelity !== null && s.fidelity !== undefined ? s.fidelity.toFixed(4) : "";
+      const cx = s.correction.x.length ? `q${s.correction.x.join(";q")}` : "";
+      const cz = s.correction.z.length ? `q${s.correction.z.join(";q")}` : "";
+      const syn = s.syndrome.map((sy) => `${sy.label}=${sy.bit}`).join(";");
+      return [s.key, s.title, `"${(s.desc || "").replace(/"/g, '""')}"`, s.vec.x.toFixed(4), s.vec.y.toFixed(4), s.vec.z.toFixed(4), fid, `"${cx}"`, `"${cz}"`, `"${syn}"`].join(",");
+    }).join("\n");
+    downloadFile(`bloch_walkthrough_${walkData.code}_${nowStamp()}.csv`, header + rows, "text/csv");
+  }
+
+  function exportPropReport() {
+    if (!propData || !propData.propResult) { alert("Press Play first to run the propagation."); return; }
+    const r = propData.propResult;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    const frameRows = r.frames.map((f, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${f.gate}</td>
+        <td>q[${f.active_qubits.join(", ")}]</td>
+        <td>${f.label || ""}</td>
+        <td>${Object.entries(f.paulis || {}).filter(([_, p]) => p && p !== "I").map(([q, p]) => `${p}@q${q}`).join(" · ") || "clean"}</td>
+        <td>${Object.entries(f.syndrome || {}).map(([a, v]) => `q${a}=${v}`).join(", ") || "—"}</td>
+      </tr>`).join("");
+
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>3D Circuit & Error Propagation Report</title>
+      <style>
+        body { font-family: "Manrope", sans-serif; background: #0a0f1f; color: #e8ecff; margin: 40px; }
+        h1 { color: #a78bfa; border-bottom: 2px solid #5b8cff; padding-bottom: 10px; }
+        h2 { color: #c9d3ff; margin-top: 30px; }
+        .header { background: #111a33; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #243257; }
+        .header table { width: 100%; border-collapse: collapse; }
+        .header td { padding: 4px 12px; color: #bfc9f3; }
+        .header td:first-child { color: #8f9bc7; font-weight: 600; width: 200px; }
+        table.data { width: 100%; border-collapse: collapse; margin: 10px 0; }
+        table.data th { background: #172345; color: #c9d3ff; padding: 8px 10px; text-align: left; font-size: 12px; border-bottom: 2px solid #5b8cff; }
+        table.data td { padding: 8px 10px; border-bottom: 1px solid #243257; font-size: 12px; vertical-align: top; font-family: monospace; }
+        .footer { margin-top: 40px; padding-top: 15px; border-top: 1px solid #243257; color: #8f9bc7; font-size: 11px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; background: linear-gradient(135deg, #8b6cff, #5b8cff); color: #fff; font-size: 10px; font-weight: 700; }
+        .success { color: #3ddc97; font-weight: 700; }
+        .fail { color: #ff6b81; font-weight: 700; }
+        .legend { display: flex; gap: 20px; margin: 10px 0; font-size: 12px; }
+        .legend span { display: inline-flex; align-items: center; gap: 6px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; }
+      </style></head><body>
+      <h1>3D Circuit & Error Propagation Report <span class="badge">3D Lab</span></h1>
+      <div class="header">
+        <table>
+          <tr><td>QEC Code</td><td>${r.code_name}</td></tr>
+          <tr><td>Input bit</td><td>|${r.input_bit}⟩</td></tr>
+          <tr><td>Injected error</td><td>${r.error_type} on q${r.error_qubit}</td></tr>
+          <tr><td>Noise scope</td><td>${r.noise_scope}</td></tr>
+          <tr><td>Logical basis</td><td>${r.basis}</td></tr>
+          <tr><td>Total frames</td><td>${r.n_frames}</td></tr>
+          <tr><td>Final errors</td><td>${Object.keys(r.final_errors).length ? Object.entries(r.final_errors).map(([q, p]) => `${p}@q${q}`).join(" · ") : "clean (identity)"}</td></tr>
+          <tr><td>Logical result</td><td class="${r.logical_success === true ? "success" : "fail"}">${r.logical_success === true ? "✓ CORRECTED (logical state preserved)" : r.logical_success === false ? "✗ FAILED" : "—"}</td></tr>
+          <tr><td>Generated at</td><td>${nowStamp()}</td></tr>
+        </table>
+      </div>
+      <h2>Error Propagation Ledger</h2>
+      <p>The Pauli frame is pushed through every Clifford gate using exact conjugation rules: X through CNOT control → target; Z through CNOT target → control; H swaps X↔Z.</p>
+      <div class="legend">
+        <span><span class="dot" style="background:#fb7185"></span> X (bit flip)</span>
+        <span><span class="dot" style="background:#fbbf24"></span> Z (phase flip)</span>
+        <span><span class="dot" style="background:#e879f9"></span> Y (both)</span>
+      </div>
+      <table class="data">
+        <thead><tr>
+          <th>#</th><th>Gate</th><th>Qubits</th><th>Step Label</th><th>Errors Present (Pauli frame)</th><th>Syndrome</th>
+        </tr></thead>
+        <tbody>${frameRows}</tbody>
+      </table>
+      <h2>The Quantum Circuit</h2>
+      <pre style="background: #060917; padding: 16px; border-radius: 8px; overflow-x: auto; color: #dfe6ff; font-family: monospace; font-size: 11px; border: 1px solid #243257;">${(window.circuitText || "Circuit text available in the Simulator tab.").replace(/</g, "&lt;")}</pre>
+      <div class="footer">
+        <strong>Interactive Quantum Error Correction Simulator</strong> — 3D Simulator Lab · Circuit & Error Propagation<br>
+        Generated at ${nowStamp()} · Team: ${teamNames()}<br>
+        Every frame is computed by the real Qiskit state-vector engine using exact Clifford conjugation rules.
+      </div>
+      </body></html>`);
+    w.document.close();
+  }
+
+  function exportPropJSON() {
+    if (!propData || !propData.propResult) { alert("Press Play first."); return; }
+    const r = propData.propResult;
+    const data = {
+      experiment: "3D Circuit & Error Propagation",
+      generatedAt: nowStamp(),
+      team: teamNames(),
+      inputs: { code: r.code_name, input_bit: r.input_bit, error_type: r.error_type, error_qubit: r.error_qubit, noise_scope: r.noise_scope, basis: r.basis },
+      n_frames: r.n_frames,
+      frames: r.frames,
+      final_errors: r.final_errors,
+      logical_success: r.logical_success,
+    };
+    downloadFile(`error_propagation_${r.code}_${nowStamp()}.json`, JSON.stringify(data, null, 2), "application/json");
+  }
+
+  function exportPropCSV() {
+    if (!propData || !propData.propResult) { alert("Press Play first."); return; }
+    const r = propData.propResult;
+    const header = "frame,gate,qubits,label,errors,syndrome\n";
+    const rows = r.frames.map((f, i) => {
+      const errs = Object.entries(f.paulis || {}).filter(([_, p]) => p && p !== "I").map(([q, p]) => `${p}@q${q}`).join(";");
+      const syn = Object.entries(f.syndrome || {}).map(([a, v]) => `q${a}=${v}`).join(";");
+      return [i + 1, f.gate, `"q[${f.active_qubits.join(",")}]"`, `"${(f.label || "").replace(/"/g, '""')}"`, `"${errs}"`, `"${syn}"`].join(",");
+    }).join("\n");
+    downloadFile(`error_propagation_${r.code}_${nowStamp()}.csv`, header + rows, "text/csv");
+  }
+
+  async function exportPropCircuit() {
+    if (!propData) { alert("Load the circuit first."); return; }
+    const cfg = getConfig();
+    try {
+      const r = await api("/api/circuit", cfg);
+      if (r.ok) {
+        downloadFile(`circuit_${cfg.code}_${nowStamp()}.txt`, r.circuit, "text/plain");
+      }
+    } catch (e) {
+      alert("Could not export circuit: " + e.message);
+    }
+  }
+
+  // ============================================================
   // INIT
   // ============================================================
 
@@ -697,11 +935,22 @@
     $("blochReset").addEventListener("click", resetWalk);
     $("blochErrorType").addEventListener("change", () => { walkData = null; fetchWalkthrough(); });
 
+    // Bloch export buttons
+    $("blochExportReport").addEventListener("click", exportBlochReport);
+    $("blochExportJSON").addEventListener("click", exportBlochJSON);
+    $("blochExportCSV").addEventListener("click", exportBlochCSV);
+
     // Prop controls
     $("propPlay").addEventListener("click", playProp);
     $("propStep").addEventListener("click", stepProp);
     $("propReset").addEventListener("click", resetProp);
     $("propSpeed").addEventListener("change", (e) => { propSpeed = parseInt(e.target.value, 10); });
+
+    // Prop export buttons
+    $("propExportReport").addEventListener("click", exportPropReport);
+    $("propExportJSON").addEventListener("click", exportPropJSON);
+    $("propExportCSV").addEventListener("click", exportPropCSV);
+    $("propExportCircuit").addEventListener("click", exportPropCircuit);
 
     // Orbit toggles
     $("blochOrbit").addEventListener("change", (e) => {

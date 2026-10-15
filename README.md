@@ -139,4 +139,3 @@ vercel --prod   # production deploy
   permanent storage. Download them when you see them, or run locally for
   permanent files.
 * The QEC simulation logic, circuits, API and pages are unchanged.
-"# qec-simulator" 

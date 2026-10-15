@@ -826,6 +826,21 @@ def _readout_bloch(sv, code, qubit=0):
     return _bloch_from_density(rho_np)
 
 
+def _physical_bloch(sv, qubit=0):
+    """Compute the PHYSICAL Bloch vector of a single qubit by tracing out
+    all other qubits WITHOUT decoding. This shows the actual state of the
+    physical qubit in the encoded block — useful for the noise stage where
+    we want to SEE the error move the arrow on the affected qubit."""
+    n_qubits = sv.num_qubits
+    other = [i for i in range(n_qubits) if i != qubit]
+    if other:
+        rho = partial_trace(sv, other)
+    else:
+        rho = sv
+    rho_np = np.asarray(rho.data, dtype=complex)
+    return _bloch_from_density(rho_np)
+
+
 def _build_encoding_only_circuit(code, qubit=0):
     """Build a QuantumCircuit containing only the encoding gates for the
     given code (prep + encode, no noise/syndrome/correction/decode)."""
@@ -856,15 +871,18 @@ def get_bloch_walkthrough(code, input_bit, error_qubit, error_type,
     n_data = CODE_INFO[code]["data_qubits"]
     n_total = CODE_INFO[code]["total_qubits"]
 
-    # Choose the input Bloch vector based on input_bit and basis
+    # Choose the input Bloch vector in CANVAS coordinates (y = up).
+    # Physics: |0⟩ = (0,0,1), |1⟩ = (0,0,-1), |+⟩ = (1,0,0), |−⟩ = (-1,0,0)
+    # Canvas conversion: physics (x,y,z) -> canvas (x, z, y) so y=up.
+    # Canvas: |0⟩ = (0,1,0), |1⟩ = (0,-1,0), |+⟩ = (1,0,0), |−⟩ = (-1,0,0)
     basis_resolved = resolve_basis(code, "bit_flip" if error_type == "X" else
                                     "phase_flip" if error_type == "Z" else
                                     "depolarizing", basis)
     if basis_resolved == "Z":
-        # |0> or |1> on the Z axis (z = ±1)
-        input_vec = {"x": 0.0, "y": 0.0, "z": 1.0 if input_bit == 0 else -1.0}
+        # |0⟩ at north pole (y=+1), |1⟩ at south pole (y=-1)
+        input_vec = {"x": 0.0, "y": 1.0 if input_bit == 0 else -1.0, "z": 0.0}
     else:
-        # |+> or |-> on the X axis (x = ±1)
+        # |+⟩ at +x, |−⟩ at -x
         input_vec = {"x": 1.0 if input_bit == 0 else -1.0, "y": 0.0, "z": 0.0}
 
     stages = []
@@ -933,17 +951,23 @@ def get_bloch_walkthrough(code, input_bit, error_qubit, error_type,
         "correction": {"x": [], "z": []},
     })
 
-    # Stage 2: NOISE — inject the forced error, the arrow moves
+    # Stage 2: NOISE — inject the forced error.
+    # Show the PHYSICAL Bloch vector of the AFFECTED qubit (not the decoded
+    # logical state) so the user can SEE the error move the arrow. For a
+    # bit-flip code with X on q1, the physical q1 flips to the opposite
+    # pole — the arrow jumps. After correction, the decode stage will show
+    # the logical state snapping back.
     try:
         sv_noise = build_statevector_up_to("noise", force_error=error_type)
-        noise_vec = _readout_bloch(sv_noise, code, 0)
+        # Use physical Bloch of the affected qubit so the arrow visibly moves
+        noise_vec = _physical_bloch(sv_noise, error_qubit)
         noise_vec_canvas = {"x": noise_vec["x"], "y": noise_vec["z"], "z": noise_vec["y"]}
     except Exception:
         noise_vec_canvas = enc_vec_canvas
     stages.append({
         "key": "noise",
         "title": "Noise",
-        "desc": f"{error_type} error injected on q{error_qubit}. Watch the arrow jump away from its target.",
+        "desc": f"{error_type} error injected on q{error_qubit}. Watch the arrow jump — the physical qubit's state changed.",
         "vec": noise_vec_canvas,
         "fidelity": None,
         "events": [f"{error_type}@q{error_qubit}"],
@@ -952,10 +976,10 @@ def get_bloch_walkthrough(code, input_bit, error_qubit, error_type,
     })
 
     # Stage 3: SYNDROME — ancilla measurements detect the error.
-    # The Bloch vector of the data qubit doesn't change (syndrome is on ancillas).
+    # The physical qubit is still in its noisy state (syndrome doesn't fix it).
     try:
         sv_synd = build_statevector_up_to("syndrome", force_error=error_type)
-        synd_vec = _readout_bloch(sv_synd, code, 0)
+        synd_vec = _physical_bloch(sv_synd, error_qubit)
         synd_vec_canvas = {"x": synd_vec["x"], "y": synd_vec["z"], "z": synd_vec["y"]}
     except Exception:
         synd_vec_canvas = noise_vec_canvas

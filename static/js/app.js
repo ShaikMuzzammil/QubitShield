@@ -155,6 +155,8 @@
 
   function setCircuit(text) {
     circuitText = text;
+    // Expose on window so the 3D Lab export functions can include the circuit in reports
+    window.circuitText = text;
     $("circuitPre").textContent = text;
     $("circuitPreLarge").textContent = text;
     applyCircuitFont();
