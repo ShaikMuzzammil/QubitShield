@@ -304,6 +304,69 @@ select:focus-visible, input:focus-visible, button:focus-visible, .circuit-box:fo
   color: #fff;
 }
 
+/* ---- Bloch trajectory table ---- */
+.bloch-trajectory-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(8, 12, 28, .55);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  flex: 1 1 200px;
+  min-width: 200px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.bloch-traj-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 4px;
+  border-radius: 4px;
+  font-size: .76rem;
+  transition: background .15s;
+}
+.bloch-traj-row:hover { background: rgba(139, 108, 255, .08); }
+.bloch-traj-row.active {
+  background: linear-gradient(90deg, rgba(139, 108, 255, .2), rgba(91, 140, 255, .15));
+  border: 1px solid var(--purple);
+}
+.bloch-traj-row.done { opacity: 0.7; }
+.bloch-traj-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: .68rem;
+  font-weight: 700;
+  color: var(--muted);
+  flex: none;
+}
+.bloch-traj-row.active .bloch-traj-num,
+.bloch-traj-row.done .bloch-traj-num {
+  background: var(--blue);
+  color: #fff;
+  border-color: transparent;
+}
+.bloch-traj-name {
+  flex: none;
+  width: 60px;
+  color: #c9d3ff;
+  font-weight: 600;
+}
+.bloch-traj-vec {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: #bfc9f3;
+  text-align: right;
+}
+
 /* ---- Lab card layout — ROW-WISE (stacked vertically, large canvas) ---- */
 .lab-card { padding: 18px 20px 20px; }
 .lab-grid {

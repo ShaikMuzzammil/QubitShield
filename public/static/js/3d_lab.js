@@ -185,6 +185,24 @@
     document.querySelectorAll("#blochStagePills .stage-pill").forEach((el) => {
       el.addEventListener("click", () => goStage(parseInt(el.dataset.stage, 10)));
     });
+
+    // Bloch vector trajectory table — all 7 stages with their vectors
+    const STAGE_COLORS_HTML = ["#5b8cff", "#8b6cff", "#ff6b81", "#3ddc97", "#ffc857", "#7aa2ff", "#c9d3ff"];
+    const trajRows = walkData.stages.map((st, i) => {
+      const v = st.vec;
+      const cls = i === walkStage ? "active" : i < walkStage ? "done" : "";
+      const dotStyle = `background:${STAGE_COLORS_HTML[i]};`;
+      return `<div class="bloch-traj-row ${cls}" data-stage="${i}">
+        <span class="bloch-traj-num" style="${i <= walkStage ? dotStyle : ''}">${i + 1}</span>
+        <span class="bloch-traj-name">${st.title}</span>
+        <span class="bloch-traj-vec">(${v.x.toFixed(2)}, ${v.y.toFixed(2)}, ${v.z.toFixed(2)})</span>
+      </div>`;
+    }).join("");
+    $("blochTrajectoryTable").innerHTML = trajRows;
+    // Click handlers for trajectory rows
+    document.querySelectorAll("#blochTrajectoryTable .bloch-traj-row").forEach((el) => {
+      el.addEventListener("click", () => goStage(parseInt(el.dataset.stage, 10)));
+    });
   }
 
   function playWalkthrough() {
@@ -275,6 +293,82 @@
       E.label3D(ctx, ax.label, ax.v, blochCam, cx, cy, scale, "#8b85ad", "10px monospace", 0, 0);
     }
 
+    // ===== TRAJECTORY TRAIL — show all 7 stage positions on the sphere =====
+    // Stage colors matching the pipeline:
+    const STAGE_COLORS_TRAIL = [
+      "#5b8cff", // input  - blue
+      "#8b6cff", // encode - purple
+      "#ff6b81", // noise  - red
+      "#3ddc97", // syndrome - green
+      "#ffc857", // correct - amber
+      "#7aa2ff", // decode - light blue
+      "#c9d3ff", // measure - white
+    ];
+
+    if (walkData && walkData.stages) {
+      const stages = walkData.stages;
+      // Add a small per-stage angular offset so overlapping dots (e.g. all at
+      // the north pole) are spread out and visible as separate points.
+      // The offset rotates each stage's dot slightly around the y-axis.
+      const stageOffset = (i) => {
+        const angle = (i - 3) * 0.15; // ±0.45 rad spread
+        return { x: Math.sin(angle), z: Math.cos(angle) - 1 };
+      };
+
+      const offsetVec = (v, i) => {
+        const off = stageOffset(i);
+        // Apply offset proportional to how close we are to a pole (offset
+        // more near poles, less near equator, so we don't distort equatorial
+        // states).
+        const poleFactor = Math.abs(v.y); // 1 at poles, 0 at equator
+        const offAmt = 0.12 * poleFactor;
+        return {
+          x: v.x + off.x * offAmt,
+          y: v.y,
+          z: v.z + off.z * offAmt,
+        };
+      };
+
+      // Draw connecting trail lines between consecutive stages
+      for (let i = 0; i < stages.length - 1; i++) {
+        const a = offsetVec(stages[i].vec, i);
+        const b = offsetVec(stages[i + 1].vec, i + 1);
+        const passed = i < walkStage;
+        const isCurrent = i === walkStage;
+        let color, width, alpha;
+        if (passed) {
+          color = STAGE_COLORS_TRAIL[i];
+          width = 2;
+          alpha = 0.7;
+        } else if (isCurrent) {
+          color = STAGE_COLORS_TRAIL[i];
+          width = 2.5;
+          alpha = 0.9;
+        } else {
+          color = "rgba(100,90,150,0.25)";
+          width = 1;
+          alpha = 0.3;
+        }
+        E.stroke3D(ctx, [a, b], blochCam, cx, cy, scale, color, width, [],
+                   (p) => p.d < 0 ? alpha * 0.4 : alpha);
+      }
+
+      // Draw all stage position dots (with offset)
+      for (let i = 0; i < stages.length; i++) {
+        const v = offsetVec(stages[i].vec, i);
+        const passed = i < walkStage;
+        const isCurrent = i === walkStage;
+        const color = STAGE_COLORS_TRAIL[i];
+        const r = isCurrent ? 7 : passed ? 5 : 4;
+        const glow = isCurrent ? 16 : passed ? 8 : 3;
+        E.dot3D(ctx, v, blochCam, cx, cy, scale, color, r, glow);
+        // Label with stage number (always show so you can see all 7)
+        const stageNum = i + 1;
+        E.label3D(ctx, `${stageNum}`, { x: v.x * 1.15, y: v.y * 1.15, z: v.z * 1.15 },
+                  blochCam, cx, cy, scale, color, "bold 10px monospace", 4, -4);
+      }
+    }
+
     // Target pin (the requested input state)
     if (walkData) {
       const t = walkData.target_vec;
@@ -284,7 +378,7 @@
                 blochCam, cx, cy, scale, "rgba(103,232,249,0.95)", "10px ui-sans-serif", 6, -6);
     }
 
-    // State arrow
+    // Current state arrow (the eased live arrow — prominent, glowing)
     E.drawArrow3D(ctx, walkDisp, blochCam, cx, cy, scale, "#a78bfa", 3.2);
 
     // Stage caption
@@ -296,8 +390,54 @@
     }
     ctx.font = "10px ui-sans-serif, system-ui";
     ctx.fillStyle = "rgba(167,139,250,1)";
-    ctx.fillText("— logical qubit state (live)", 14, 42);
+    ctx.fillText("— full pipeline trajectory (all 7 stages shown)", 14, 42);
     ctx.restore();
+
+    // Mini stage timeline at the bottom of the canvas (7 small spheres with stage colors)
+    if (walkData && walkData.stages) {
+      const tlY = h - 30;
+      const tlStartX = 60;
+      const tlEndX = w - 60;
+      const tlStep = (tlEndX - tlStartX) / (walkData.stages.length - 1);
+      ctx.save();
+      for (let i = 0; i < walkData.stages.length; i++) {
+        const x = tlStartX + i * tlStep;
+        const passed = i < walkStage;
+        const isCurrent = i === walkStage;
+        const color = STAGE_COLORS_TRAIL[i];
+        // Dot
+        ctx.fillStyle = color;
+        ctx.globalAlpha = isCurrent ? 1 : passed ? 0.8 : 0.4;
+        if (isCurrent) {
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 10;
+        }
+        ctx.beginPath();
+        ctx.arc(x, tlY, isCurrent ? 6 : 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // Label
+        ctx.globalAlpha = isCurrent ? 1 : 0.6;
+        ctx.font = "8px ui-monospace, monospace";
+        ctx.textAlign = "center";
+        ctx.fillStyle = color;
+        ctx.fillText(`${i + 1}`, x, tlY + 16);
+        ctx.fillStyle = "rgba(143,155,199,0.7)";
+        ctx.font = "7px ui-sans-serif";
+        ctx.fillText(walkData.stages[i].title.substring(0, 6), x, tlY + 26);
+        // Connecting line
+        if (i < walkData.stages.length - 1) {
+          ctx.globalAlpha = 0.3;
+          ctx.strokeStyle = "rgba(100,90,150,0.5)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x + 5, tlY);
+          ctx.lineTo(x + tlStep - 5, tlY);
+          ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
 
     // Badge
     ctx.save();
